@@ -1,0 +1,194 @@
+﻿@{
+    ViewBag.Title = "User Drop Off";
+    var parameters = new Dictionary<string, string>
+    {
+        { "hasData", ViewBag.HasPageViewsData?.ToString().ToLower() ?? "false" }
+    };
+}
+@model List<PolicyPulse.Models.Domain.PageViewsResponseWithRank>
+@inject Microsoft.FeatureManagement.IFeatureManager featureManager;
+@inject TP.Services.Tenancy.ITenantContextProvider tenancyContext;
+<!-- Dependencies -->
+<script src="/js/highcharts.js"></script>
+
+<!-- Main Body -->
+<body class="m-0" style="overflow-x: hidden;">
+    @* <div id="dropoffcontainer" class="container-fluid chart-scroll-wrapper">
+        <div id="charts-wrapper" class="d-flex flex-column gap-4">
+            @* <div i class="d-flex flex-wrap justify-content-sm-end align-items-center">
+                @await Html.BeginAssistantButtonBuilder("errorReportModal",
+                "User Drop-off Summary",
+                                AssistantType.DROP_OFF_SUMMARY).AddContextFields(
+                                PageContextFields.StartDate,
+                                PageContextFields.EndDate,
+                                PageContextFields.LOB).SetContainerScope("dropoffcontainer").AddParameters(parameters).SummaryAssistantButtonAsync()
+            </div> 
+            <div id="chart-template" class="d-none">
+                <div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
+                    <!-- AI Icon (placeholder for chart-specific context) -->
+                    <div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+                        <!-- We'll inject chart-specific button here -->
+                        <div class="ai-btn-placeholder"></div>
+                    </div>
+                    <!-- Chart container -->
+                    <div class="chart w-100 h-100"></div>
+                </div>
+            </div>
+            <!-- Container where charts will be added dynamically -->
+            <div class="chart-scroll-container"></div>
+        </div>
+        @await Html.SummaryAssistantModalAsync("errorReportModal", "User Drop-off Summary")
+    </div>
+    <div id="clickedData"></div> *@
+    <div class="dashboard-wrapper">
+        <div id="dropoffcontainer" class="container-fluid mt-3">
+            <div class="row">
+                <div class="col-12 overflow-auto mt-n2" style="max-height: 900px;">
+                    <div class="chart-container w-100 position-relative">
+
+                        <div id="chart-template" class="d-none">
+                            <div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
+                                <!-- AI Icon (placeholder for chart-specific context) -->
+                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+                                    <!-- We'll inject chart-specific button here -->
+                                    <div class="ai-btn-placeholder"></div>
+                                </div>
+                                <!-- Chart container -->
+                                <div class="chart w-100 h-100"></div>
+                            </div>
+                        </div>
+                        <!-- Container where charts will be added dynamically -->
+                        <div class="chart-scroll-container"></div>
+                    </div>
+                </div>
+            </div>
+            @await Html.SummaryAssistantModalAsync("errorReportModal", "User Drop-off Summary")
+        </div>
+        <div id="clickedData"></div>
+    </div>
+
+</body> 
+
+@section Scripts {
+    <script>
+        // $(document).ready(function () {
+        document.addEventListener("DOMContentLoaded", function () {
+            const appUserDropData = @Html.Raw(Json.Serialize(ViewBag.Data));
+            const pageTitle = @Html.Raw(Json.Serialize(ViewBag.Title));
+
+            function renderHighcharts(chartId, labels, data, originatorName) {
+                const isEmptyData = !data || data.length === 0 || data.every(val => val === 0);
+
+                Highcharts.chart(chartId, {
+                    chart: { type: 'column' },
+                    title: {
+                        text: originatorName,
+                        align: 'left'
+                    },
+                    xAxis: {
+                        categories: labels,
+                        labels: {
+                            style: { fontSize: '12px' },
+                            rotation: -45,
+                            overflow: 'justify',
+                            align: 'right'
+                        }
+                    },
+                    yAxis: {
+                        min: 0,
+                        title: { text: 'Counts' },
+                        tickInterval: isEmptyData ? 1 : Math.ceil(Math.max(...data) / 7)
+                    },
+                    tooltip: {
+                        shared: true,
+                        style: { fontFamily: 'Inter' },
+                        useHTML: true,
+                        headerFormat: '<div style="font-weight: bold; font-size: 14px;">{point.key}</div>',
+                        pointFormatter: function () {
+                            const count = this.y;
+                            const label = count === 1 ? 'view' : 'views';
+                            return `<div style="color: ${this.series.color};">${count} ${label}</div>`;
+                        }
+                    },
+                    series: [{
+                        name: 'Page Names',
+                        data: labels.map((label, i) => ({
+                            name: label,
+                            y: isEmptyData ? null : data[i],
+                            events: {
+                                click: function () {
+                                    const baseUrl = '@Url.Action("PageViewDetails", "Report")';
+                                    const drillDownUrl = `${baseUrl}?pageName=${encodeURIComponent(this.name)}&chartTitle=${encodeURIComponent(pageTitle)}&appName=${encodeURIComponent(originatorName)}&isLast=true`;
+                                    window.location.href = drillDownUrl;
+                                }
+                            }
+                        })),
+                        color: 'rgba(121, 170, 178, 1)',
+                        borderRadius: 5,
+                        pointWidth: 25,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () { return this.y ? this.y : ''; },
+                            style: { fontWeight: 'bold', color: 'black' },
+                            align: 'center',
+                            verticalAlign: 'top',
+                            y: -20
+                        }
+                    }],
+                    credits: { enabled: false },
+                    exporting: { enabled: true }
+                });
+            }
+
+            // for (const app in appUserDropData) {
+            //     const pageDict = appUserDropData[app];
+            //     const labels = Object.keys(pageDict);
+            //     const data = Object.values(pageDict);
+            //     const totalCount = data.reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
+            //     const chartId = 'userdropoffchart_' + app.replace(/\s+/g, '_');
+
+            //     $('#charts-wrapper').append(`<div class="chart-block" id="${chartId}"></div>`);
+
+            //     renderHighcharts(chartId, labels, data, app);
+                   
+            // }
+                for (const app in appUserDropData) {
+                    const pageDict = appUserDropData[app];
+                    const labels = Object.keys(pageDict);
+                    const data = Object.values(pageDict);
+                    const chartId = 'userdropoffchart_' + app.replace(/\s+/g, '_');
+
+                    // Clone the chart template
+                    const $chartBlock = $('#chart-template').clone().removeAttr('id').removeClass('d-none');
+
+                    // Inject chart container ID
+                    $chartBlock.find('.chart').attr('id', chartId);
+
+                    // Inject chart-specific AI button
+                    // const aiButtonHtml = `
+                    //     <button class="btn btn-sm btn-outline-primary ai-btn" data-app="${app}">
+                    //         <i class="bi bi-robot"></i>
+                    //     </button>`;
+                        var aiButtonHtml = `
+                        @await Html.BeginAssistantButtonBuilder("errorReportModal",
+                            "AI for ${app}",  // dynamic chart title
+                                    AssistantType.AVERAGE_TIME_SPENT_BOP
+                                    ).AddContextFields(
+                                        PageContextFields.StartDate,
+                                        PageContextFields.EndDate,
+                                        PageContextFields.LOB
+                                ).SetContainerScope("timeSpentContainer").AddParameters(parameters).SummaryAssistantButtonAsync()
+                `;
+                    $chartBlock.find('.ai-btn-placeholder').html(aiButtonHtml);
+
+                    // Append to chart-scroll-container
+                    $('.chart-scroll-container').append($chartBlock);
+
+                    // Render chart
+                    renderHighcharts(chartId, labels, data, app);
+                }
+
+
+        });
+    </script>
+}

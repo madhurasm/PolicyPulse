@@ -1,0 +1,260 @@
+﻿@{
+	ViewBag.Title = "Average Time Spent Per Page";
+	var parameters = new Dictionary<string, string>
+	{
+		{ "hasData", ViewBag.HasPageViewsData?.ToString().ToLower() ?? "false" }
+	};
+}
+@model List<PolicyPulse.Models.Domain.PageViewsResponseWithRank>
+@inject Microsoft.FeatureManagement.IFeatureManager featureManager;
+@inject TP.Services.Tenancy.ITenantContextProvider tenancyContext;
+
+<script src="/js/highcharts.js"></script>
+<script src="/js/highcharts-3d.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<body class="m-0" style="overflow-x: hidden;">
+	<style>
+		#percentile-radios {
+			position: relative;
+			
+			transition: transform 0.3s ease;
+		}
+	</style>
+	<div id="timeSpentWrapper" class="d-flex flex-column">
+		<div id="percentile-container" class="percentile-radios d-flex justify-content-end">
+			@foreach (var percentile in new[] { 90, 50, 10, 0 })
+			{
+				<div class="radio-container me-2 mb-2">
+					<input type="radio"
+						   id="percentile-@percentile"
+						   name="percentile"
+						   value="@percentile" />
+					<label for="percentile-@percentile" class="custom-radio px-1 rounded">
+						<span class="radio-label">@Html.Raw(percentile > 0 ? percentile + "<sup>th</sup> Percentile" : "All")</span>
+					</label>
+				</div>				
+			}
+		</div>
+		<div class="chart-scroll-container"></div>
+
+	<div class="dashboard-wrapper d-flex">
+		<div id="timeSpentContainer" class="container-fluid mt-3">
+			<div class="row">
+				<div class="col-12 overflow-auto mt-n2" style="max-height: 900px;">
+					<div class="chart-container w-100 position-relative">
+						
+						<div id="chart-template" class="d-none">
+							<div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
+								<!-- AI Icon (placeholder for chart-specific context) -->
+								<div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+									<!-- We'll inject chart-specific button here -->
+									<div class="ai-btn-placeholder"></div>
+								</div>
+								<!-- Chart container -->
+								<div class="chart w-100 h-100"></div>
+							</div>
+						</div>
+						<!-- Container where charts will be added dynamically -->
+						<div class="chart-scroll-container"></div>
+					</div>
+				</div>
+			</div>
+			@await Html.SummaryAssistantModalAsync("errorReportModal", "Time Spent Summary")
+		</div>
+		@* <div id="clickedData"></div> *@
+	</div>
+
+	</div>
+</body>
+
+
+@section Scripts {
+	<script>
+		document.addEventListener("DOMContentLoaded", function () {
+			const modelData = @Html.Raw(Json.Serialize(@Model));
+			var appPageViewData = @Html.Raw(Json.Serialize(ViewBag.AverageTimeSpentList));
+
+			function renderChartByPercentile(percentile) {
+				$('#chart-scroll-container').empty();
+
+				const appData = {};
+
+				modelData.forEach(page => {
+					if (page.percentileRank >= percentile) {
+						if (!appData[page.appName]) {
+							appData[page.appName] = {
+								labels: [],
+								data: []
+							};
+						}
+						appData[page.appName].labels.push(page.pageName);
+						appData[page.appName].data.push(page.avgTimeSpentSeconds);
+					}
+				});
+
+				for (const app in appData) {
+					const labels = appData[app].labels,
+						  data = appData[app].data,
+						  chartId = 'avgTimeChart_' + app.replace(/\s+/g, '_');
+
+					// Clone template
+					let $chartBlock = $('#chart-template .chart-block').clone();
+					$chartBlock.attr('id', chartId);
+
+					// Update AI button with app-specific context
+					$chartBlock.find('.ai-btn').attr('data-app', app);
+
+					// Give chart container unique id
+					$chartBlock.find('.chart').attr('id', chartId + 'Container');
+						$('#charts-wrapper').append($chartBlock);
+						// Inject chart-specific AI button
+					var aiButtonHtml = `
+						@await Html.BeginAssistantButtonBuilder("errorReportModal",
+							"${app}",  // dynamic chart title
+												AssistantType.AVERAGE_TIME_SPENT_BOP
+												).AddContextFields(
+														PageContextFields.StartDate,
+														PageContextFields.EndDate,
+														PageContextFields.LOB
+					).SetContainerScope("timeSpentContainer").AddParameters(parameters).SummaryAssistantButtonAsync()
+					`;
+
+					$chartBlock.find('.ai-btn-placeholder').replaceWith(aiButtonHtml);
+					// Append chart block with AI icon + chart area
+					
+						// Append to container
+						$('#timeSpentContainer .chart-scroll-container').append($chartBlock);
+					// Render chart into cloned chart container
+					renderAverageTimeSpentChart(chartId + 'Container', labels, data, app);
+							
+				}
+			}
+
+			let savedPercentile = sessionStorage.getItem('selectedPercentile') || 90;
+			$('input[name="percentile"][value="' + savedPercentile + '"]').prop('checked', true);
+
+			renderChartByPercentile(savedPercentile);
+
+			$('input[name="percentile"]').on('change', function () {
+				let selectedPercentile = $(this).val();
+				sessionStorage.setItem('selectedPercentile', selectedPercentile);
+				renderChartByPercentile(selectedPercentile);
+			});
+
+			function renderAverageTimeSpentChart(chartid, labels, data, appName) {
+				let pageNameMapping = {};
+				const filteredData = [];
+				const filteredLabels = [];
+
+				data.forEach((value, index) => {
+					const rawLabel = labels[index];
+					if (value > 0) {
+						filteredData.push(value);
+						filteredLabels.push(rawLabel);
+						pageNameMapping[rawLabel] = rawLabel;
+					}
+				});
+
+				const maxValue = Math.max(...filteredData);
+
+				const coloredData = filteredData.map(value => ({
+					y: value,
+					color: value === maxValue ? '#FF7F7F' : 'rgba(121, 170, 178, 1)'
+				}));
+
+				Highcharts.chart(chartid, {
+					chart: {
+						type: 'bar',
+						spacingLeft: 10
+					},
+					title: {
+						text: appName,
+						align: 'left'
+					},
+					legend: {
+						enabled: false
+					},
+					xAxis: {
+						categories: filteredLabels,
+						title: {
+							text: 'Page Names',
+							align: 'middle'
+						},
+						labels: {
+							style: { fontSize: '12px' },
+							overflow: 'justify',
+							align: 'right'
+						}
+					},
+					yAxis: {
+						min: 0,
+						title: {
+							text: 'Time Spent (seconds)',
+							align: 'middle'
+						},
+						tickInterval: Math.ceil(maxValue / 7),
+						gridLineWidth: 1
+					},
+					series: [{
+						dataSorting: {
+							enabled: true,
+							sortKey: 'y'
+						},
+						name: 'Page Names',
+						data: coloredData,
+						borderColor: 'rgba(121, 170, 178, 1)',
+						borderRadius: 5,
+						pointWidth: 10,
+						point: {
+							events: {
+								click: function () {
+									const displayLabel = this.category;
+									const pageName = Object.keys(pageNameMapping).find(key => pageNameMapping[key] === displayLabel) || displayLabel;
+									const chartTitle = 'Average Time Spent Per Page';
+
+									window.location.href = '@Url.Action("PageViewDetails", "Report")' +
+										`?appName=${appName}&pageName=${encodeURIComponent(pageName)}&chartTitle=${chartTitle}`;
+								}
+							}
+						},
+						dataLabels: {
+							enabled: true,
+							formatter: function () { return this.y ? this.y : ''; },
+							style: { fontWeight: 'bold', color: 'black' },
+							align: 'right',
+							verticalAlign: 'middle',
+							x: 25
+						}
+					}],
+					tooltip: {
+						shared: true,
+						valueSuffix: ' Seconds',
+						style: { fontFamily: 'Inter' },
+						headerFormat: '<div style="font-weight: bold; color: black; font-size: 14px;"><span style="color: black;">{point.key}</span></div><br/>',
+						pointFormat: '<div style="color: {series.color};"><span style="font-weight: normal;"></span><span style="font-weight: normal;">{point.y} </span></div>'
+					},
+					credits: { enabled: false }
+				});
+			}
+		});
+				// Shift layout when AI modal opens
+		$('#errorReportModal').on('show.bs.modal', function () {
+			// $('#percentile-container').css({
+				
+			// 	 'transform': 'translateX(-250px)'
+			// });
+			 $('#percentile-container').css('transform', 'translateX(-250px)'); // slide left
+		});
+
+		// Reset when modal closes
+		$('#errorReportModal').on('hidden.bs.modal', function () {
+			// $('#percentile-container').css({
+				
+			// 	'transform': 'translateX(0)'
+			// });
+			$('#percentile-container').css('transform', 'translateX(0)');    // reset
+		});
+	</script>
+} 
+

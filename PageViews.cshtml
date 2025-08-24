@@ -1,0 +1,141 @@
+﻿@{
+    ViewBag.Title = "Page Views for BusinessOwners";
+    var parameters = new Dictionary<string, string>
+    {
+        { "hasData", ViewBag.HasPageViewsData?.ToString().ToLower() ?? "false" }
+    };
+}
+@model List<PolicyPulse.Models.Domain.PageViewsResponseWithRank>
+@inject Microsoft.FeatureManagement.IFeatureManager featureManager;
+@inject TP.Services.Tenancy.ITenantContextProvider tenancyContext;
+
+<!-- Highcharts + jQuery -->
+<script src="/js/highcharts.js"></script>
+<script src="/js/highcharts-3d.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+<body class="m-0 overflow-hidden">
+    <div class="dashboard-wrapper">
+        <div id="pageViewsContainer" class="container-fluid mt-3">
+            <div class="row">
+                <div class="col-12 overflow-auto mt-n2" style="max-height: 900px;">
+                    <div class="chart-container w-100 position-relative">
+
+                        <!-- Chart template with AI placeholder -->
+                        <div id="chart-template" class="d-none">
+                            <div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
+                                <!-- AI Icon -->
+                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+                                    <div class="ai-btn-placeholder"></div>
+                                </div>
+                                <!-- Chart container -->
+                                <div class="chart w-100 h-100"></div>
+                            </div>
+                        </div>
+
+                        <!-- Container where charts will be added dynamically -->
+                        <div class="chart-scroll-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal for AI buttons -->
+            @await Html.SummaryAssistantModalAsync("errorReportModal", "Page Views Summary")
+        </div>
+    </div>
+</body>
+
+@section Scripts {
+    <script>
+        // $(document).ready(function () {
+        document.addEventListener("DOMContentLoaded", function () {
+            var appPageViewData = @Html.Raw(Json.Serialize(ViewBag.AppPageViewData));
+            var selectedDate = @Html.Raw(Json.Serialize(ViewBag.SelectedDate));
+            var selectedEndDate = @Html.Raw(Json.Serialize(ViewBag.SelectedEndDate));
+            var selectedLob = @Html.Raw(Json.Serialize(ViewBag.selectedLob));
+
+            function renderHighcharts(chartId, labels, data, chartTitle, lob, originatorName) {
+                const isEmptyData = !data || data.length === 0 || data.every(val => val === 0);
+
+                Highcharts.chart(chartId, {
+                    chart: { type: 'column' },
+                    title: { text: chartTitle, align: 'left', style: { fontFamily: 'Montserrat', fontSize: '22px' } },
+                    xAxis: { categories: labels, labels: { style: { fontSize: '11px', fontFamily: 'Montserrat' } } },
+                    yAxis: { min: 0, title: { text: 'Counts' }, tickInterval: isEmptyData ? 1 : Math.ceil(Math.max(...data) / 7) },
+                    tooltip: {
+                        shared: true,
+                        style: { fontFamily: 'Montserrat' },
+                        useHTML: true,
+                        headerFormat: '<div style="font-weight: bold; font-size: 14px;">{point.key}</div>',
+                        pointFormat: '<div style="color: {series.color};">{point.y} views</div>'
+                    },
+                    series: [{
+                        name: 'Page Names',
+                        data: labels.map((label, i) => ({
+                            name: label,
+                            y: isEmptyData ? null : data[i],
+                            events: {
+                                click: function () {
+                                    const baseUrl = '@Url.Action("GetPageViewDetailsTopPercent", "Report")';
+                                    const drillDownUrl = `${baseUrl}?selectedDate=${encodeURIComponent(selectedDate)}&selectedEndDate=${encodeURIComponent(selectedEndDate)}&selectedLob=${encodeURIComponent(lob || selectedLob)}&pageName=${encodeURIComponent(this.name)}&chartTitle=${encodeURIComponent('Page Views')}&OriginatorName=${encodeURIComponent(originatorName)}`;
+                                    window.location.href = drillDownUrl;
+                                }
+                            }
+                        })),
+                        color: 'rgba(121, 170, 178, 1)',
+                        borderRadius: 5,
+                        pointWidth: 25,
+                        dataLabels: { enabled: true, formatter: function () { return this.y ? this.y : ''; }, style: { fontWeight: 'bold', color: 'black' }, align: 'center', verticalAlign: 'top', y: -20 }
+                    }],
+                    credits: { enabled: false },
+                    exporting: { enabled: true }
+                });
+            }
+
+            // Ensure chart container has min height
+            $('.chart-scroll-container').css('min-height', '500px');
+
+            // Render charts dynamically
+            for (var app in appPageViewData) {
+                var pageDict = appPageViewData[app];
+                var labels = Object.keys(pageDict);
+                var data = Object.values(pageDict);
+
+                if (data.length === 0) continue;
+
+                var chartId = 'pageViewsChart_' + app.replace(/\s+/g, '_');
+
+                // Clone chart template
+                var $chartBlock = $('#chart-template .chart-block').clone().removeClass('d-none').removeAttr('id');
+
+                // Set chart container ID
+                $chartBlock.find('.chart').attr('id', chartId);
+
+                // Inject dynamic AI button with chart-specific title
+                var aiButtonHtml = `
+                    @await Html.BeginAssistantButtonBuilder("errorReportModal",
+                        "${app}",  // <-- Use app name dynamically as modal title
+                                AssistantType.PAGE_VIEWS_SUMMARY
+                        ).AddContextFields(
+                                PageContextFields.StartDate,
+                                PageContextFields.EndDate,
+                                PageContextFields.LOB
+                        ).SetContainerScope("pageViewsContainer").AddParameters(parameters).SummaryAssistantButtonAsync()
+            `;
+                // Set AI button app context (optional)
+                
+            $chartBlock.find('.ai-btn-placeholder').replaceWith(aiButtonHtml);
+
+                // Append to scroll container
+                $('#pageViewsContainer .chart-scroll-container').append($chartBlock);
+
+                // Render Highcharts chart
+                renderHighcharts(chartId, labels, data, app, selectedLob, app);
+            }
+        });
+    </script>
+}
