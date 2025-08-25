@@ -1,0 +1,506 @@
+﻿@{
+    ViewBag.Title = "Dashboard";
+}
+@using PolicyPulse.Entities
+@using System.Text.Json
+@model List<PolicyPulse.Models.Domain.AppHealthResponse>
+@inject Microsoft.FeatureManagement.IFeatureManager featureManager;
+@inject TP.Services.Tenancy.ITenantContextProvider tenancyContext;
+
+<script src="/js/highcharts.js"></script>
+
+<style>
+    .open-summ-assist-click-target {
+        margin-left: 250px;
+        margin-top: -64px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: auto;
+        width: 95%;
+        box-shadow: none;
+        margin: 0 auto 10px auto;
+        /*  border-radius: 20px; */
+        padding: 15px;
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+        padding-top: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #E0E0E0;
+        border-radius: 0.3125em;
+    }
+
+    .tooltip-box {
+        font-weight: bold;
+        color: black;
+        font-size: 0.875em; /* 14px */
+        margin-bottom: 0.25em; /* 4px */
+
+       
+
+        transform: rotate(0deg);
+        opacity: 1;
+        border-top-left-radius: 0.625em; /* 10px */
+        border-top-right-radius: 0.625em; /* 10px */
+
+        background: #FFFFFF;
+    }
+
+    .highcharts-tooltip-box {
+        display: none !important;
+    }
+    
+</style>
+
+<body class="m-0 p-3 overflow-hidden">
+    <div class="container-fluid  ">
+        <div class="row dashboard">
+            <!-- Left Column: Health Monitoring  dashboard dashboard-container  -->
+
+            <div class="col-md-3 col-12 p-0">
+                <div class="error">
+                    <h5 class=" health mb-3 pl-3 pt-3">Health Monitoring</h5>
+                </div>
+                <div class="p-3">
+                <div class="d-flex flex-column gap-3 custom-box " >
+                    @if (Model != null)
+                    {
+                        foreach (var app in Model)
+                        {
+                            var statusText = app.Healthy ? "Healthy" : "Unhealthy";
+                            var statusClass = app.Healthy ? "border-success" : "border-danger";
+                            var iconClass = app.Healthy ? "fa-check-circle text-success" : "fa-exclamation-triangle text-danger";
+
+                            <div class="custom-card cursor-pointer text-center p-3">
+
+                                <!-- Status Row -->
+                                <div class="d-flex flex-column align-items-center mb-2">
+                                    <i class="fas @iconClass fs-4 mb-1"></i>
+                                    <span class="fw-semibold text-danger custom-status">@statusText</span>
+                                </div>
+
+                                <!-- App Name -->
+                                <div class="app-name">@app.AppName</div>
+
+                                <!-- Health Note -->
+                                <div class="text-muted health-note">@app.HealthNote</div>
+
+                                <!-- Link Row -->
+                                 @if (!app.Healthy){
+        
+                                <div class="text-muted mt-2 d-flex justify-content-end align-items-center health-details"
+                                     onclick="handleInfoClick('@app.AppId','@app.AppName')">
+                                    Health Details <i class="fas fa-chevron-right ms-1"></i>
+                                </div>
+                              }
+                            </div>
+
+
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-danger">Health data not available.</p>
+                    }
+                </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Error/Exception Monitoring -->
+            <div class="col-md-9 col-12  p-0 error-monitoring">
+                <div class="error">
+                <h5 class=" health  mb-3 pl-3 pt-3">Error/Exception Monitoring</h5>
+                </div>
+                <div class="p-3">
+                @if (@Model != null)
+                {
+                    foreach (var app in @Model)
+                    {
+                            <div id="errorsContainer-@app.AppId" class="chart-container w-100 position-relative p-0" style=" background-color: #F8F8F8; ">
+                            <!-- Title and Radio Buttons Combined in One Row -->
+                           
+                                    <div class="d-flex justify-content-between app p-2">
+                                <span class=" fw-bold ibm-font p-2">
+                                    @app.AppName Errors
+                                </span>
+                                    @if (ViewBag.ErrorCategories != null)
+                                    {
+                                        <div class="radio-container">
+                                            <label for="categorySelect-@app.AppId" class="mr-2 group-label">
+                                                Group By:
+                                            </label>
+
+                                            
+                                                <select id="categorySelect-@app.AppId"
+                                                        title="categorySelect"
+                                                        class="category-select">
+                                                    @foreach (var category in ViewBag.ErrorCategories)
+                                                    {
+                                                        <option value="@category.Key" class="categoryvalue">
+                                                            @category.Value
+                                                        </option>
+                                                    }
+                                                </select>
+                                                <i class="fa fa-caret-down dropdown-icon"></i>
+                                            
+                                        </div>
+                                    }
+                                </div>
+                                    <div class="col-12 col-md-auto p-0" >
+                                    <!-- Radio Buttons -->
+                                    <div class="d-flex flex-wrap justify-content-start align-items-center mt-n1 pl-2">
+                                        <!-- flex-wrap allows wrapping of items on small screens -->
+                                        <div class="radio-container me-2">
+                                            <input type="radio" id="percentile-90-@app.AppId" name="percentile-@app.AppId" value="90">
+                                            <label for="percentile-90-@app.AppId" class="custom-radio px-1 rounded">
+                                                <span class="radio-label percentile-text">90<sup>th</sup> Percentile</span>
+                                            </label>
+                                        </div>
+                                        <div class="radio-container me-2">
+                                            <input type="radio" id="percentile-50-@app.AppId" name="percentile-@app.AppId" value="50">
+                                            <label for="percentile-50-@app.AppId" class="custom-radio px-1 rounded">
+                                                <span class="radio-label percentile-text">50<sup>th</sup> Percentile</span>
+                                            </label>
+                                        </div>
+                                        <div class="radio-container me-2">
+                                            <input type="radio" id="percentile-10-@app.AppId" name="percentile-@app.AppId" value="10">
+                                            <label for="percentile-10-@app.AppId" class="custom-radio px-1 rounded">
+                                                <span class="radio-label percentile-text">10<sup>th</sup> Percentile</span>
+                                            </label>
+                                        </div>
+                                        <div class="radio-container">
+                                            <input type="radio" id="percentile-100-@app.AppId" name="percentile-@app.AppId" value="0">
+                                            <label for="percentile-100-@app.AppId" class="custom-radio px-1 rounded">
+                                                <span class="radio-label percentile-text">All</span>
+                                            </label>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                            
+                            <!-- Chart -->
+                                <div class="chart w-100" id="errorsGrid-@app.AppId" style="height: 400px;"></div>
+                        </div>
+                    }
+                }
+              </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+
+@section Scripts {
+    <script>
+		const errorDetailsUrl = '@Url.Action("ErrorDetails", "Report")',
+			healthDetailsUrl = '@Url.Action("HealthDetails", "Report")';
+
+        function handleInfoClick(appId, appName) {
+			if (!appId) return;
+
+            window.location.href = `${healthDetailsUrl}?appId=${encodeURIComponent(appId)}&appName=${encodeURIComponent(appName)}`;
+        }
+
+		let errors = {};
+
+		$(document).ready(function () {
+			let selectedCategory = '@ViewBag.GroupBy';
+			const apps = @Html.Raw(Json.Serialize(Model?.ToDictionary( a => a.AppId, a => a.AppName ))),
+				categories = @Html.Raw(Json.Serialize(ViewBag.ErrorCategories));
+	
+            function renderChart(chartId, labels, totalErrors, impactedUsers, appId, legendText, relIds) {
+				const appName = apps[appId],
+					clickHandler = function (e) {
+						const category = $(`#categorySelect-${appId}`).find(":selected").val();
+
+						window.location.href = `${errorDetailsUrl}?appId=${appId}&category=${encodeURIComponent(category)}&relId=${relIds[e.point.index]}`;
+					};
+
+                Highcharts.chart(chartId, {
+                    chart: {
+                        type: 'bar',
+                        backgroundColor: '#F8F8F8',
+                        height: 435,
+                        spacingTop: 40,
+                        marginBottom: 150,
+                        inverted: true
+                    },
+                    title: { text: null },
+                    credits: { enabled: false },
+                    exporting: {
+                        enabled: true,
+                        buttons: {
+                            contextButton: {
+                                align: 'right',
+                                verticalAlign: 'top',
+                                x: 0,
+                                y: -40,
+                                 theme: {
+                                  fill: '#F8F8F8', // Button background color
+                                  states: {
+                                hover: {
+                                fill: '#F8F8F8' // same as default, no change on hover
+                                },
+                                  select: {
+                                  fill: '#F8F8F8' // same as default, no change on click
+                             }
+                           }
+                           }
+                            }
+                        }
+                            },
+                            xAxis: {
+            categories: labels,
+            title: {
+                text: legendText,
+                style: {
+                    fontFamily: 'Inter, sans-serif',
+                   /*  fontWeight: 600,    */        // Semi Bold
+                    fontStyle: 'normal',
+                    fontSize: '0.75em',       // 14px ≈ 0.875em
+                    lineHeight: '1.4em',       // ~19.6px
+                    letterSpacing: '0',
+                    color: '#000000'           // Text color
+                    // backgroundColor won't work here directly
+                }
+            },
+            labels: {
+                formatter: function () {
+                    return String(this.value).slice(0, 30);
+                },
+                // rotation: -45,
+                overflow: 'justify',
+                align: 'right',
+                style: {
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: '400',
+                    fontStyle: 'normal',
+                    fontSize: '0.75em',        // 12px
+                    lineHeight: '1.5625em',    // 25px
+                    letterSpacing: '0',
+                    whiteSpace: 'nowrap',
+                    color: '#212936'
+                }
+                }
+               },
+
+                           yAxis: {
+            title: {
+                text: 'Number of Users Impacted',
+                style: {
+                    fontFamily: 'Inter, sans-serif',
+                    /* fontWeight: 600,    */        // Semi Bold
+                    fontStyle: 'normal',
+                    fontSize: '0.75em',       // 14px ≈ 0.875em
+                    lineHeight: '1.4em',       // ~19.6px
+                    letterSpacing: '0',
+                    color: '#000000'           // White text
+                },
+                 y: 20
+            },
+            min: 0,
+            labels: {
+                enabled: true
+            },
+            gridLineWidth: 1,
+            gridLineColor: '#e0e0e0',
+            allowDecimals: false,
+            tickInterval: Math.max(1, Math.ceil(Math.max(...impactedUsers) / 8)),
+            max: Math.ceil(Math.max(...impactedUsers)),
+            endOnTick: true
+        },
+                               series: [{
+            name: legendText,
+            data: impactedUsers.map(function(value) {
+                let color;
+                if (value <= 30) {
+                  color = ' #10D069';
+      
+                } else if (value <= 60) {
+                   color = '#E4A91B' ;
+
+                } else {
+                    color = '#FF3732'; // or 'rgba(255, 0, 0, 1)'
+                }
+                return {
+                    y: value,
+                    color: color,
+                    borderColor: color,
+                    borderRadius: 5,
+                    pointWidth: 15
+                };
+            }),
+            dataLabels: {
+                enabled: true,
+                formatter: function () {
+                    return this.y ? this.y : '';
+                }
+            },
+               point: {
+                  events: {
+                        click: clickHandler
+                          }
+                       }
+        }],
+                    legend: {
+                        enabled: false
+                    },
+                          tooltip: {
+            shared: true,
+            useHTML: true,
+
+            formatter: function () {
+                const me = this,
+                      totalErrorCount = totalErrors[me.point.index] || 0,
+                      usersImpacted = me.y || 0;
+
+                return `
+                <div class="tool">
+          <div class="custom-header">
+          ${me.key}
+        </div>
+               <div class="error-summary">
+          <div class="summary-row">
+            <span class="icon-info">&#9432;</span>
+            <span class="label">Error Count</span>
+            <strong>${totalErrorCount}</strong>
+          </div>
+          <div class="summary-row">
+            <span class="icon-user">
+              <i class="fa fa-user"></i>
+            </span>
+            <span class="label">Users Impacted</span>
+            <strong>${usersImpacted}</strong>
+          </div>
+        </div>
+        </div>
+                `;
+            }
+        },
+                             plotOptions: {
+                bar: {
+                    depth: 25,
+                    borderRadius: 0,
+                    pointPadding: 0.2,
+                    groupPadding: 0.1
+                }
+            }
+        });
+            }
+
+			function renderErrors( appId, appName, category, percentile ) {
+				const errorLabels = [],
+					errorData = [],
+					errorUsers = [],
+					relIds = [],
+					gridId = `errorsGrid-${appId}`,
+					container = $('#' + gridId),
+					containerLocator = `#errorsContainer-${appId}`,
+					categorySelectLocator = `${containerLocator} select[id="categorySelect-${appId}"]`,
+					percentileLocator = `${containerLocator} input[name="percentile-${appId}"]`,
+					selectedCategory = $(categorySelectLocator).find(":selected").val(),
+					selectedPercentile = $(percentileLocator).filter(":checked").val(),
+					categoryToRender = category || selectedCategory,
+					defaultPercentile = 90,
+					appErrors = errors[appId],
+					percentileToRender = Number( percentile || selectedPercentile || (appErrors.some( e => e.percentileRank >= defaultPercentile ) ? defaultPercentile : 0 ) );
+
+                     const hasAnyData = appErrors && appErrors.length > 0;
+
+				appErrors.forEach( event => {
+					if (event.percentileRank >= percentileToRender) {
+						errorLabels.push(event.groupKey);
+						errorData.push(event.totalErrorCount);
+						errorUsers.push(event.userCount);
+						relIds.push(event.relId);
+					}
+				} );
+
+				container.empty();
+        if (!hasAnyData) {
+               // Case 2: No records in any percentile
+               container.html(`
+                            <div class="d-flex justify-content-center align-items-center h-100 text-center flex-column" >
+            <img src='@Url.Content("~/microsoft/untitled (1).png")'
+                 alt="No Data Found" style="max-width:200px; margin-bottom:10px;" />
+            <div class="text-normal fw-bold fs-5">No data found</div>
+        </div>
+               `);
+
+               // hide percentile radios
+               $(percentileLocator).closest(".radio-container, .percentile-wrapper").hide();
+           }
+                      else if (errorLabels.length === 0) {
+            // Case 1: Data exists, but not for this percentile
+            container.html(`
+                <div class="d-flex justify-content-center align-items-center h-100 text-center">
+                    <div class="text-normal fw-bold fs-5">
+                        No data available for your selected percentile.
+                    </div>
+                </div>
+            `);
+
+            // keep radios visible
+            $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
+        }
+
+
+				else {
+					renderChart(gridId, errorLabels, errorData, errorUsers, appId, categories[categoryToRender], relIds);
+                      $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
+				}
+
+				$(`${percentileLocator}[value="${percentileToRender}"`).prop('checked', true);
+
+				if ( categoryToRender && categoryToRender !== selectedCategory ) {
+					$(`${categorySelectLocator} [value="${categoryToRender}"`).prop('selected', true);
+				}
+
+				$(categorySelectLocator).off().on('change', function () {
+					getErrorData( appId, appName, $(this).val() );
+				});
+
+				$(percentileLocator).off().on('change', function () {
+					const cmp = $(this),
+						value = cmp.val(),
+						appId = this.id.split('-').pop();
+
+					renderErrors( appId, appName, null, value );
+				});
+			}
+
+			function getErrorData( appId, appName, category ) {
+				showSpinner(); // TODO: better, per-grid
+				$.ajax({
+					url: '@Url.Action("ErrorsByCategory", "Report")',
+					type: 'GET',
+					contentType: 'application/json',
+					data: {
+						appId: appId,
+						category: category
+					},
+					success: function (result) {
+						if (!result) {
+							console.error('Invalid data received:', result);
+							return;
+						}
+						errors[appId] = result;
+						renderErrors( appId, appName, category );
+					},
+					error: function () {
+						alert('Failed to get error data.');
+					},
+					complete: function() {
+						hideSpinner();
+					}
+				});
+			}
+
+			Object.keys(apps).forEach( key => {
+				getErrorData( key, apps[key], selectedCategory );
+			} );
+        });
+    </script>
+}
