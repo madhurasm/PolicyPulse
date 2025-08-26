@@ -15,7 +15,7 @@
 <body class="m-0" style="overflow-x: hidden;">
     @* <div id="dropoffcontainer" class="container-fluid chart-scroll-wrapper">
         <div id="charts-wrapper" class="d-flex flex-column gap-4">
-            @* <div i class="d-flex flex-wrap justify-content-sm-end align-items-center">
+            @* <div  class="d-flex flex-wrap justify-content-sm-end align-items-center">
                 @await Html.BeginAssistantButtonBuilder("errorReportModal",
                 "User Drop-off Summary",
                                 AssistantType.DROP_OFF_SUMMARY).AddContextFields(
@@ -49,7 +49,7 @@
                         <div id="chart-template" class="d-none">
                             <div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
                                 <!-- AI Icon (placeholder for chart-specific context) -->
-                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:60px; z-index:10;">
                                     <!-- We'll inject chart-specific button here -->
                                     <div class="ai-btn-placeholder"></div>
                                 </div>
@@ -146,11 +146,8 @@
             //     const data = Object.values(pageDict);
             //     const totalCount = data.reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
             //     const chartId = 'userdropoffchart_' + app.replace(/\s+/g, '_');
-
             //     $('#charts-wrapper').append(`<div class="chart-block" id="${chartId}"></div>`);
-
-            //     renderHighcharts(chartId, labels, data, app);
-                   
+            //     renderHighcharts(chartId, labels, data, app);                   
             // }
                 for (const app in appUserDropData) {
                     const pageDict = appUserDropData[app];
@@ -165,19 +162,16 @@
                     $chartBlock.find('.chart').attr('id', chartId);
 
                     // Inject chart-specific AI button
-                    // const aiButtonHtml = `
-                    //     <button class="btn btn-sm btn-outline-primary ai-btn" data-app="${app}">
-                    //         <i class="bi bi-robot"></i>
-                    //     </button>`;
+                    
                         var aiButtonHtml = `
                         @await Html.BeginAssistantButtonBuilder("errorReportModal",
-                            "AI for ${app}",  // dynamic chart title
+                            "${app} Summary",  // dynamic chart title
                                     AssistantType.DROP_OFF_SUMMARY
                                     ).AddContextFields(
                                         PageContextFields.StartDate,
                                         PageContextFields.EndDate,
                                         PageContextFields.LOB
-                                ).SetContainerScope("timeSpentContainer").AddParameters(parameters).SummaryAssistantButtonAsync()
+                                ).SetContainerScope("dropoffContainer").AddParameters(parameters).SummaryAssistantButtonAsync()
                 `;
                     $chartBlock.find('.ai-btn-placeholder').html(aiButtonHtml);
 

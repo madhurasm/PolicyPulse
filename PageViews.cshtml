@@ -29,7 +29,7 @@
                         <div id="chart-template" class="d-none">
                             <div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
                                 <!-- AI Icon -->
-                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+                                <div class="ai-btn-wrapper position-absolute" style="top:10px; right:60px; z-index:10;">
                                     <div class="ai-btn-placeholder"></div>
                                 </div>
                                 <!-- Chart container -->
@@ -85,6 +85,7 @@
                                     window.location.href = drillDownUrl;
                                 }
                             }
+
                         })),
                         color: 'rgba(121, 170, 178, 1)',
                         borderRadius: 5,
@@ -118,7 +119,7 @@
                 // Inject dynamic AI button with chart-specific title
                 var aiButtonHtml = `
                     @await Html.BeginAssistantButtonBuilder("errorReportModal",
-                        "${app}",  // <-- Use app name dynamically as modal title
+                        "${app} Summary",  // <-- Use app name dynamically as modal title
                                 AssistantType.PAGE_VIEWS_SUMMARY
                         ).AddContextFields(
                                 PageContextFields.StartDate,

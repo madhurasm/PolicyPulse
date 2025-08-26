@@ -12,15 +12,20 @@
 <script src="/js/highcharts.js"></script>
 <script src="/js/highcharts-3d.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<body class="m-0" style="overflow-x: hidden;">
+<head>
 	<style>
-		#percentile-radios {
+		#percentile-container {
 			position: relative;
-			
-			transition: transform 0.3s ease;
+			transition: transform 0.3s ease-in-out;
+		}
+
+		#percentile-container.slide-left {
+			transform: translateX(-250px);
 		}
 	</style>
+</head>
+<body class="m-0" style="overflow-x: hidden;">
+	
 	<div id="timeSpentWrapper" class="d-flex flex-column">
 		<div id="percentile-container" class="percentile-radios d-flex justify-content-end">
 			@foreach (var percentile in new[] { 90, 50, 10, 0 })
@@ -47,7 +52,7 @@
 						<div id="chart-template" class="d-none">
 							<div class="chart-block w-100 mt-4 position-relative" style="height: 420px;">
 								<!-- AI Icon (placeholder for chart-specific context) -->
-								<div class="ai-btn-wrapper position-absolute" style="top:10px; right:50px; z-index:10;">
+								<div class="ai-btn-wrapper position-absolute" style="top:10px; right:60px; z-index:10;">
 									<!-- We'll inject chart-specific button here -->
 									<div class="ai-btn-placeholder"></div>
 								</div>
@@ -111,7 +116,7 @@
 						// Inject chart-specific AI button
 					var aiButtonHtml = `
 						@await Html.BeginAssistantButtonBuilder("errorReportModal",
-							"${app}",  // dynamic chart title
+							"${app} Summary",  // dynamic chart title
 												AssistantType.AVERAGE_TIME_SPENT_BOP
 												).AddContextFields(
 														PageContextFields.StartDate,
@@ -238,22 +243,14 @@
 				});
 			}
 		});
-				// Shift layout when AI modal opens
-		$('#errorReportModal').on('show.bs.modal', function () {
-			// $('#percentile-container').css({
-				
-			// 	 'transform': 'translateX(-250px)'
-			// });
-			 $('#percentile-container').css('transform', 'translateX(-250px)'); // slide left
+		// Slide left when modal is fully visible
+		$('#errorReportModal').on('shown.bs.modal', function () {
+		  $('#percentile-container').addClass('slide-left');
 		});
 
-		// Reset when modal closes
+		// Reset when modal is hidden
 		$('#errorReportModal').on('hidden.bs.modal', function () {
-			// $('#percentile-container').css({
-				
-			// 	'transform': 'translateX(0)'
-			// });
-			$('#percentile-container').css('transform', 'translateX(0)');    // reset
+		  $('#percentile-container').removeClass('slide-left');
 		});
 	</script>
 } 
