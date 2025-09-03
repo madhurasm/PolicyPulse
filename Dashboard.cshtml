@@ -38,7 +38,7 @@
         font-size: 0.875em; /* 14px */
         margin-bottom: 0.25em; /* 4px */
 
-       
+
 
         transform: rotate(0deg);
         opacity: 1;
@@ -48,144 +48,192 @@
         background: #FFFFFF;
     }
 
+    .ai-btn-wrapper {
+        position: absolute;
+        top: 10px;
+        right: 50px; /* adjust so it's beside the Highcharts 3 dots */
+        z-index: 10;
+    }
     .highcharts-tooltip-box {
         display: none !important;
     }
-    
+
+    .error-monitoring {
+        transition: margin-right 0.4s ease-in-out;
+    }
+
+        /* When AI modal is open, push the panel left */
+        .error-monitoring.slide-left {
+            margin-right: 400px; /* adjust this to match your modal width */
+        }
 </style>
 
 <body class="m-0 p-3 overflow-hidden">
-    <div class="container-fluid  ">
-        <div class="row dashboard">
-            <!-- Left Column: Health Monitoring  dashboard dashboard-container  -->
+    <div class="dashboard-wrapper">
+        <div class="container-fluid  ">
+            <div class="row dashboard">
+                <!-- Left Column: Health Monitoring  dashboard dashboard-container  -->
 
-            <div class="col-md-3 col-12 p-0">
-                <div class="error">
-                    <h5 class=" health mb-3 pl-3 pt-3">Health Monitoring</h5>
-                </div>
-                <div class="p-3">
-                <div class="d-flex flex-column gap-3 custom-box " >
-                    @if (Model != null)
-                    {
-                        foreach (var app in Model)
-                        {
-                            var statusText = app.Healthy ? "Healthy" : "Unhealthy";
-                            var statusClass = app.Healthy ? "border-success" : "border-danger";
-                            var iconClass = app.Healthy ? "fa-check-circle text-success" : "fa-exclamation-triangle text-danger";
+                <div class="col-md-3 col-12 p-0">
+                    <div class="error">
+                        <h5 class=" health mb-3 pl-3 pt-3">Health Monitoring</h5>
+                    </div>
+                    <div class="p-3">
+                        <div class="d-flex flex-column gap-3 custom-box ">
+                            @if (Model != null)
+                            {
+                                foreach (var app in Model)
+                                {
+                                    var statusText = app.Healthy ? "Healthy" : "Unhealthy";
+                                    var statusClass = app.Healthy ? "border-success" : "border-danger";
+                                    var iconClass = app.Healthy ? "fa-check-circle text-success" : "fa-exclamation-triangle text-danger";
 
-                            <div class="custom-card cursor-pointer text-center p-3">
+                                    <div class="custom-card cursor-pointer text-center p-3">
 
-                                <!-- Status Row -->
-                                <div class="d-flex flex-column align-items-center mb-2">
-                                    <i class="fas @iconClass fs-4 mb-1"></i>
-                                    <span class="fw-semibold text-danger custom-status">@statusText</span>
-                                </div>
-
-                                <!-- App Name -->
-                                <div class="app-name">@app.AppName</div>
-
-                                <!-- Health Note -->
-                                <div class="text-muted health-note">@app.HealthNote</div>
-
-                                <!-- Link Row -->
-                                 @if (!app.Healthy){
-        
-                                <div class="text-muted mt-2 d-flex justify-content-end align-items-center health-details"
-                                     onclick="handleInfoClick('@app.AppId','@app.AppName')">
-                                    Health Details <i class="fas fa-chevron-right ms-1"></i>
-                                </div>
-                              }
-                            </div>
-
-
-                        }
-                    }
-                    else
-                    {
-                        <p class="text-danger">Health data not available.</p>
-                    }
-                </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Error/Exception Monitoring -->
-            <div class="col-md-9 col-12  p-0 error-monitoring">
-                <div class="error">
-                <h5 class=" health  mb-3 pl-3 pt-3">Error/Exception Monitoring</h5>
-                </div>
-                <div class="p-3">
-                @if (@Model != null)
-                {
-                    foreach (var app in @Model)
-                    {
-                            <div id="errorsContainer-@app.AppId" class="chart-container w-100 position-relative p-0" style=" background-color: #F8F8F8; ">
-                            <!-- Title and Radio Buttons Combined in One Row -->
-                           
-                                    <div class="d-flex justify-content-between app p-2">
-                                <span class=" fw-bold ibm-font p-2">
-                                    @app.AppName Errors
-                                </span>
-                                    @if (ViewBag.ErrorCategories != null)
-                                    {
-                                        <div class="radio-container">
-                                            <label for="categorySelect-@app.AppId" class="mr-2 group-label">
-                                                Group By:
-                                            </label>
-
-                                            
-                                                <select id="categorySelect-@app.AppId"
-                                                        title="categorySelect"
-                                                        class="category-select">
-                                                    @foreach (var category in ViewBag.ErrorCategories)
-                                                    {
-                                                        <option value="@category.Key" class="categoryvalue">
-                                                            @category.Value
-                                                        </option>
-                                                    }
-                                                </select>
-                                                <i class="fa fa-caret-down dropdown-icon"></i>
-                                            
+                                        <!-- Status Row -->
+                                        <div class="d-flex flex-column align-items-center mb-2">
+                                            <i class="fas @iconClass fs-4 mb-1"></i>
+                                            <span class="fw-semibold text-danger custom-status">@statusText</span>
                                         </div>
-                                    }
-                                </div>
-                                    <div class="col-12 col-md-auto p-0" >
-                                    <!-- Radio Buttons -->
-                                    <div class="d-flex flex-wrap justify-content-start align-items-center mt-n1 pl-2">
-                                        <!-- flex-wrap allows wrapping of items on small screens -->
-                                        <div class="radio-container me-2">
-                                            <input type="radio" id="percentile-90-@app.AppId" name="percentile-@app.AppId" value="90">
-                                            <label for="percentile-90-@app.AppId" class="custom-radio px-1 rounded">
-                                                <span class="radio-label percentile-text">90<sup>th</sup> Percentile</span>
-                                            </label>
-                                        </div>
-                                        <div class="radio-container me-2">
-                                            <input type="radio" id="percentile-50-@app.AppId" name="percentile-@app.AppId" value="50">
-                                            <label for="percentile-50-@app.AppId" class="custom-radio px-1 rounded">
-                                                <span class="radio-label percentile-text">50<sup>th</sup> Percentile</span>
-                                            </label>
-                                        </div>
-                                        <div class="radio-container me-2">
-                                            <input type="radio" id="percentile-10-@app.AppId" name="percentile-@app.AppId" value="10">
-                                            <label for="percentile-10-@app.AppId" class="custom-radio px-1 rounded">
-                                                <span class="radio-label percentile-text">10<sup>th</sup> Percentile</span>
-                                            </label>
-                                        </div>
-                                        <div class="radio-container">
-                                            <input type="radio" id="percentile-100-@app.AppId" name="percentile-@app.AppId" value="0">
-                                            <label for="percentile-100-@app.AppId" class="custom-radio px-1 rounded">
-                                                <span class="radio-label percentile-text">All</span>
-                                            </label>
-                                        </div>
-                                        
+
+                                        <!-- App Name -->
+                                        <div class="app-name">@app.AppName</div>
+
+                                        <!-- Health Note -->
+                                        <div class="text-muted health-note">@app.HealthNote</div>
+
+                                        <!-- Link Row -->
+                                        @if (!app.Healthy)
+                                        {
+
+                                            <div class="text-muted mt-2 d-flex justify-content-end align-items-center health-details"
+                                                 onclick="handleInfoClick('@app.AppId','@app.AppName')">
+                                                Health Details <i class="fas fa-chevron-right ms-1"></i>
+                                            </div>
+                                        }
                                     </div>
-                                </div>
-                            
-                            <!-- Chart -->
-                                <div class="chart w-100" id="errorsGrid-@app.AppId" style="height: 400px;"></div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-danger">Health data not available.</p>
+                            }
                         </div>
-                    }
-                }
-              </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Error/Exception Monitoring -->
+                <div class="col-md-9 col-12  p-0 error-monitoring">
+                    <div class="error">
+                        <h5 class=" health  mb-3 pl-3 pt-3">Error/Exception Monitoring</h5>
+                    </div>
+                    <div class="p-3">
+                        @if (@Model != null)
+                        {
+                            foreach (var app in @Model)
+                            {
+                                <div id="errorsContainer-@app.AppId" class="chart-container w-100 position-relative p-0" style=" background-color: #F8F8F8; ">
+                                    <!-- Title and Radio Buttons Combined in One Row -->
+
+                                    <div class="d-flex justify-content-between align-items-center app p-2">
+                                        <!-- Left: App Name -->
+                                        <span class="fw-bold ibm-font">
+                                            @app.AppName Errors
+                                        </span>
+
+                                        <!-- Right: AI Icon + Dropdown -->
+                                        <div class="d-flex align-items-center">
+                                            <!-- AI Icon -->
+                                        
+                                            <!-- Dropdown -->
+                                    @if (ViewBag.ErrorCategories != null)
+                                            {
+                                                <div class="radio-container d-flex align-items-center">
+                                                    <label for="categorySelect-@app.AppId" class="me-2 group-label">
+                                                        Group By:
+                                                    </label>
+
+                                                    <select id="categorySelect-@app.AppId"
+                                                            title="categorySelect"
+                                                            class="category-select">
+                                                        @foreach (var category in ViewBag.ErrorCategories)
+                                                        {
+                                                            <option value="@category.Key" class="categoryvalue">
+                                                                @category.Value
+                                                            </option>
+                                                        }
+                                                    </select>
+                                                    <i class="fa fa-caret-down dropdown-icon ms-1"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-auto p-0">
+                                        <!-- Radio Buttons -->
+                                        <div class="d-flex flex-wrap justify-content-start align-items-center mt-n1 pl-2">
+                                                <div class="d-flex flex-wrap align-items-center">
+
+                                            <!-- flex-wrap allows wrapping of items on small screens -->
+                                            <div class="radio-container me-2">
+                                                <input type="radio" id="percentile-90-@app.AppId" name="percentile-@app.AppId" value="90">
+                                                <label for="percentile-90-@app.AppId" class="custom-radio px-1 rounded">
+                                                    <span class="radio-label percentile-text">90<sup>th</sup> Percentile</span>
+                                                </label>
+                                            </div>
+                                            <div class="radio-container me-2">
+                                                <input type="radio" id="percentile-50-@app.AppId" name="percentile-@app.AppId" value="50">
+                                                <label for="percentile-50-@app.AppId" class="custom-radio px-1 rounded">
+                                                    <span class="radio-label percentile-text">50<sup>th</sup> Percentile</span>
+                                                </label>
+                                            </div>
+                                            <div class="radio-container me-2">
+                                                <input type="radio" id="percentile-10-@app.AppId" name="percentile-@app.AppId" value="10">
+                                                <label for="percentile-10-@app.AppId" class="custom-radio px-1 rounded">
+                                                    <span class="radio-label percentile-text">10<sup>th</sup> Percentile</span>
+                                                </label>
+                                            </div>
+                                            <div class="radio-container">
+                                                <input type="radio" id="percentile-100-@app.AppId" name="percentile-@app.AppId" value="0">
+                                                <label for="percentile-100-@app.AppId" class="custom-radio px-1 rounded">
+                                                    <span class="radio-label percentile-text">All</span>
+                                                </label>
+                                            </div>
+
+                                        </div>
+
+                                        <div id="errorSummaryContainer-@app.AppId" class="ms-auto align-self-start" style="margin-top:100px; margin-right:60px;">
+                                            @{
+                                                var assistantTitle = $"{app.AppName} Summary";
+                                                    var hasData = ViewBag.AppHasData != null
+                                                    && ViewBag.AppHasData.ContainsKey(app.AppId)
+                                                    && ViewBag.AppHasData[app.AppId];
+                                            }
+                                        
+                                            @await Html.BeginAssistantButtonBuilder(
+                                                "errorReportModal",
+                                                // "Error/Exception Monitor Report Summary",                                                                    
+                                                assistantTitle,
+                                                AssistantType.ERROR_MONITOR_REPORT).AddContextFields(
+                                                PageContextFields.StartDate,
+                                                PageContextFields.EndDate
+                                                         ).SetContainerScope($"errorSummaryContainer-{app.AppId}").AddParameters(new Dictionary<string, string>
+                                                    {
+                                                    { "hasData", hasData.ToString().ToLower() }, // "true" or "false"
+                                                    { "appName", app.AppName }
+                                                    }).SummaryAssistantButtonAsync()
+                                        </div>
+                                    </div>
+                                </div>                    
+                                    
+                                <!-- Chart -->
+                                <div class="chart w-100" id="errorsGrid-@app.AppId" style="height: 400px;"></div>
+                                </div>
+                            }
+                        }
+                        @await Html.SummaryAssistantModalAsync("errorReportModal", "Error/Exception Monitoring Report Summary")
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -194,29 +242,29 @@
 
 @section Scripts {
     <script>
-		const errorDetailsUrl = '@Url.Action("ErrorDetails", "Report")',
-			healthDetailsUrl = '@Url.Action("HealthDetails", "Report")';
+        const errorDetailsUrl = '@Url.Action("ErrorDetails", "Report")',
+            healthDetailsUrl = '@Url.Action("HealthDetails", "Report")';
 
         function handleInfoClick(appId, appName) {
-			if (!appId) return;
+            if (!appId) return;
 
             window.location.href = `${healthDetailsUrl}?appId=${encodeURIComponent(appId)}&appName=${encodeURIComponent(appName)}`;
         }
 
-		let errors = {};
+        let errors = {};
 
-		$(document).ready(function () {
-			let selectedCategory = '@ViewBag.GroupBy';
-			const apps = @Html.Raw(Json.Serialize(Model?.ToDictionary( a => a.AppId, a => a.AppName ))),
-				categories = @Html.Raw(Json.Serialize(ViewBag.ErrorCategories));
-	
+        $(document).ready(function () {
+            let selectedCategory = '@ViewBag.GroupBy';
+            const apps = @Html.Raw(Json.Serialize(Model?.ToDictionary(a => a.AppId, a => a.AppName))),
+                categories = @Html.Raw(Json.Serialize(ViewBag.ErrorCategories));
+
             function renderChart(chartId, labels, totalErrors, impactedUsers, appId, legendText, relIds) {
-				const appName = apps[appId],
-					clickHandler = function (e) {
-						const category = $(`#categorySelect-${appId}`).find(":selected").val();
+                const appName = apps[appId],
+                    clickHandler = function (e) {
+                        const category = $(`#categorySelect-${appId}`).find(":selected").val();
 
-						window.location.href = `${errorDetailsUrl}?appId=${appId}&category=${encodeURIComponent(category)}&relId=${relIds[e.point.index]}`;
-					};
+                        window.location.href = `${errorDetailsUrl}?appId=${appId}&category=${encodeURIComponent(category)}&relId=${relIds[e.point.index]}`;
+                    };
 
                 Highcharts.chart(chartId, {
                     chart: {
@@ -317,7 +365,7 @@
                 let color;
                 if (value <= 30) {
                   color = ' #10D069';
-      
+
                 } else if (value <= 60) {
                    color = '#E4A91B' ;
 
@@ -357,29 +405,29 @@
                       usersImpacted = me.y || 0;
 
                 return `
-                <div class="tool">
-          <div class="custom-header">
-          ${me.key}
-        </div>
-               <div class="error-summary">
-          <div class="summary-row">
-            <span class="icon-info">&#9432;</span>
-            <span class="label">Error Count</span>
-            <strong>${totalErrorCount}</strong>
-          </div>
-          <div class="summary-row">
-            <span class="icon-user">
-              <i class="fa fa-user"></i>
-            </span>
-            <span class="label">Users Impacted</span>
-            <strong>${usersImpacted}</strong>
-          </div>
-        </div>
-        </div>
-                `;
-            }
-        },
-                             plotOptions: {
+                        <div class="tool">
+                            <div class="custom-header">
+                                ${me.key}
+                            </div>
+                                <div class="error-summary">
+                                    <div class="summary-row">
+                                    <span class="icon-info">&#9432;</span>
+                                    <span class="label">Error Count</span>
+                                    <strong>${totalErrorCount}</strong>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="icon-user">
+                                        <i class="fa fa-user"></i>
+                                    </span>
+                                    <span class="label">Users Impacted</span>
+                                    <strong>${usersImpacted}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            plotOptions: {
                 bar: {
                     depth: 25,
                     borderRadius: 0,
@@ -390,117 +438,126 @@
         });
             }
 
-			function renderErrors( appId, appName, category, percentile ) {
-				const errorLabels = [],
-					errorData = [],
-					errorUsers = [],
-					relIds = [],
-					gridId = `errorsGrid-${appId}`,
-					container = $('#' + gridId),
-					containerLocator = `#errorsContainer-${appId}`,
-					categorySelectLocator = `${containerLocator} select[id="categorySelect-${appId}"]`,
-					percentileLocator = `${containerLocator} input[name="percentile-${appId}"]`,
-					selectedCategory = $(categorySelectLocator).find(":selected").val(),
-					selectedPercentile = $(percentileLocator).filter(":checked").val(),
-					categoryToRender = category || selectedCategory,
-					defaultPercentile = 90,
-					appErrors = errors[appId],
-					percentileToRender = Number( percentile || selectedPercentile || (appErrors.some( e => e.percentileRank >= defaultPercentile ) ? defaultPercentile : 0 ) );
+            function renderErrors( appId, appName, category, percentile ) {
+                const errorLabels = [],
+                    errorData = [],
+                    errorUsers = [],
+                    relIds = [],
+                    gridId = `errorsGrid-${appId}`,
+                    container = $('#' + gridId),
+                    containerLocator = `#errorsContainer-${appId}`,
+                    categorySelectLocator = `${containerLocator} select[id="categorySelect-${appId}"]`,
+                    percentileLocator = `${containerLocator} input[name="percentile-${appId}"]`,
+                    selectedCategory = $(categorySelectLocator).find(":selected").val(),
+                    selectedPercentile = $(percentileLocator).filter(":checked").val(),
+                    categoryToRender = category || selectedCategory,
+                    defaultPercentile = 90,
+                    appErrors = errors[appId],
+                    percentileToRender = Number( percentile || selectedPercentile || (appErrors.some( e => e.percentileRank >= defaultPercentile ) ? defaultPercentile : 0 ) );
 
                      const hasAnyData = appErrors && appErrors.length > 0;
 
-				appErrors.forEach( event => {
-					if (event.percentileRank >= percentileToRender) {
-						errorLabels.push(event.groupKey);
-						errorData.push(event.totalErrorCount);
-						errorUsers.push(event.userCount);
-						relIds.push(event.relId);
-					}
-				} );
+                appErrors.forEach( event => {
+                    if (event.percentileRank >= percentileToRender) {
+                        errorLabels.push(event.groupKey);
+                        errorData.push(event.totalErrorCount);
+                        errorUsers.push(event.userCount);
+                        relIds.push(event.relId);
+                    }
+                } );
 
-				container.empty();
-        if (!hasAnyData) {
-               // Case 2: No records in any percentile
-               container.html(`
-                            <div class="d-flex justify-content-center align-items-center h-100 text-center flex-column" >
-            <img src='@Url.Content("~/microsoft/untitled (1).png")'
-                 alt="No Data Found" style="max-width:200px; margin-bottom:10px;" />
-            <div class="text-normal fw-bold fs-5">No data found</div>
-        </div>
-               `);
+                container.empty();
+                if (!hasAnyData) {
+                       // Case 2: No records in any percentile
+                       container.html(`
+                             <div class="d-flex justify-content-center align-items-center h-100 text-center flex-column" >
+                                <img src='@Url.Content("~/microsoft/untitled (1).png")'
+                                     alt="No Data Found" style="max-width:200px; margin-bottom:10px;" />
+                                <div class="text-normal fw-bold fs-5"> No data found </div>
+                            </div>
+                       `);
 
-               // hide percentile radios
-               $(percentileLocator).closest(".radio-container, .percentile-wrapper").hide();
-           }
-                      else if (errorLabels.length === 0) {
-            // Case 1: Data exists, but not for this percentile
-            container.html(`
-                <div class="d-flex justify-content-center align-items-center h-100 text-center">
-                    <div class="text-normal fw-bold fs-5">
-                        No data available for your selected percentile.
-                    </div>
-                </div>
-            `);
+                       // hide percentile radios
+                       $(percentileLocator).closest(".radio-container, .percentile-wrapper").hide();
+                   }
+                              else if (errorLabels.length === 0) {
+                    // Case 1: Data exists, but not for this percentile
+                    container.html(`
+                        <div class="d-flex justify-content-center align-items-center h-100 text-center">
+                            <div class="text-normal fw-bold fs-5">
+                                No data available for your selected percentile.
+                            </div>
+                        </div>
+                    `);
 
-            // keep radios visible
-            $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
-        }
+                    // keep radios visible
+                    $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
+                }
+                else {
+                    renderChart(gridId, errorLabels, errorData, errorUsers, appId, categories[categoryToRender], relIds);
+                        $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
+                }
 
+                $(`${percentileLocator}[value="${percentileToRender}"`).prop('checked', true);
 
-				else {
-					renderChart(gridId, errorLabels, errorData, errorUsers, appId, categories[categoryToRender], relIds);
-                      $(percentileLocator).closest(".radio-container, .percentile-wrapper").show();
-				}
+                if ( categoryToRender && categoryToRender !== selectedCategory ) {
+                    $(`${categorySelectLocator} [value="${categoryToRender}"`).prop('selected', true);
+                }
 
-				$(`${percentileLocator}[value="${percentileToRender}"`).prop('checked', true);
+                $(categorySelectLocator).off().on('change', function () {
+                    getErrorData( appId, appName, $(this).val() );
+                });
 
-				if ( categoryToRender && categoryToRender !== selectedCategory ) {
-					$(`${categorySelectLocator} [value="${categoryToRender}"`).prop('selected', true);
-				}
+                $(percentileLocator).off().on('change', function () {
+                    const cmp = $(this),
+                        value = cmp.val(),
+                        appId = this.id.split('-').pop();
 
-				$(categorySelectLocator).off().on('change', function () {
-					getErrorData( appId, appName, $(this).val() );
-				});
+                    renderErrors( appId, appName, null, value );
+                });
+            }
 
-				$(percentileLocator).off().on('change', function () {
-					const cmp = $(this),
-						value = cmp.val(),
-						appId = this.id.split('-').pop();
+            function getErrorData( appId, appName, category ) {
+                showSpinner(); // TODO: better, per-grid
+                $.ajax({
+                    url: '@Url.Action("ErrorsByCategory", "Report")',
+                    type: 'GET',
+                    contentType: 'application/json',
+                    data: {
+                        appId: appId,
+                        category: category
+                    },
+                    success: function (result) {
+                        if (!result) {
+                            console.error('Invalid data received:', result);
+                            return;
+                        }
+                        errors[appId] = result;
+                        renderErrors( appId, appName, category );
+                    },
+                    error: function () {
+                        alert('Failed to get error data.');
+                    },
+                    complete: function() {
+                        hideSpinner();
+                    }
+                });
+            }
 
-					renderErrors( appId, appName, null, value );
-				});
-			}
+            Object.keys(apps).forEach( key => {
+                getErrorData( key, apps[key], selectedCategory );
+            } );
+        });
+            $(document).ready(function () {
+            // When AI modal opens → slide left
+            $('#errorReportModal').on('shown.bs.modal', function () {
+                $('.error-monitoring').addClass('slide-left');
+            });
 
-			function getErrorData( appId, appName, category ) {
-				showSpinner(); // TODO: better, per-grid
-				$.ajax({
-					url: '@Url.Action("ErrorsByCategory", "Report")',
-					type: 'GET',
-					contentType: 'application/json',
-					data: {
-						appId: appId,
-						category: category
-					},
-					success: function (result) {
-						if (!result) {
-							console.error('Invalid data received:', result);
-							return;
-						}
-						errors[appId] = result;
-						renderErrors( appId, appName, category );
-					},
-					error: function () {
-						alert('Failed to get error data.');
-					},
-					complete: function() {
-						hideSpinner();
-					}
-				});
-			}
-
-			Object.keys(apps).forEach( key => {
-				getErrorData( key, apps[key], selectedCategory );
-			} );
+            // When AI modal closes → slide back
+            $('#errorReportModal').on('hidden.bs.modal', function () {
+                $('.error-monitoring').removeClass('slide-left');
+            });
         });
     </script>
 }
